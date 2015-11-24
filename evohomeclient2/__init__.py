@@ -28,25 +28,25 @@ class EvohomeClient(EvohomeBase):
         location = None
         gateway = None
         control_system = None
-        
+
         if len(self.locations)==1:
             location = self.locations[0]
         else:
             raise Exception("More than one location available")
-            
+
         if len(location._gateways)==1:
             gateway = location._gateways[0]
         else:
             raise Exception("More than one gateway available")
-            
+
         if len(gateway._control_systems)==1:
             control_system = gateway._control_systems[0]
         else:
             raise Exception("More than one control system available")
-            
+
         return control_system
-        
-        
+
+
     def _login(self):
         url = 'https://rs.alarmnet.com:443/TotalConnectComfort/Auth/OAuth/Token'
         headers = {
@@ -65,7 +65,9 @@ class EvohomeClient(EvohomeBase):
             'Password':	self.password,
             'Connection':	'Keep-Alive'
         }
-        r = requests.post(url, data=data, headers=headers)
+        r = requests.post(url, data=data, headers=headers, allow_redirects=False)
+        if r.status_code != requests.codes.ok:
+            r.raise_for_status()
         self.access_token = self._convert(r.text)['access_token']
         self.headers = {
             'Authorization': 'bearer ' + self.access_token,
@@ -78,12 +80,16 @@ class EvohomeClient(EvohomeBase):
 
     def user_account(self):
         r = requests.get('https://rs.alarmnet.com:443/TotalConnectComfort/WebAPI/emea/api/v1/userAccount', headers=self.headers)
+        if r.status_code != requests.codes.ok:
+            r.raise_for_status()
 
         self.account_info = self._convert(r.text)
         return self.account_info
 
     def installation(self):
         r = requests.get('https://rs.alarmnet.com:443/TotalConnectComfort/WebAPI/emea/api/v1/location/installationInfo?userId=%s&includeTemperatureControlSystems=True' % self.account_info['userId'], headers=self.headers)
+        if r.status_code != requests.codes.ok:
+            r.raise_for_status()
 
         self.installation_info = self._convert(r.text)
         self.system_id = self.installation_info[0]['gateways'][0]['temperatureControlSystems'][0]['systemId']
@@ -96,10 +102,14 @@ class EvohomeClient(EvohomeBase):
     def full_installation(self, location=None):
         location = self._get_location(location)
         r = requests.get('https://rs.alarmnet.com:443/TotalConnectComfort/WebAPI/emea/api/v1/location/%s/installationInfo?includeTemperatureControlSystems=True' % location, headers=self.headers)
+        if r.status_code != requests.codes.ok:
+            r.raise_for_status()
         return self._convert(r.text)
 
     def gateway(self):
         r = requests.get('https://rs.alarmnet.com:443/TotalConnectComfort/WebAPI/emea/api/v1/gateway', headers=self.headers)
+        if r.status_code != requests.codes.ok:
+            r.raise_for_status()
         return self._convert(r.text)
 
     def set_status_normal(self):
@@ -122,7 +132,7 @@ class EvohomeClient(EvohomeBase):
 
     def temperatures(self):
         return self._get_single_heating_system().temperatures()
-    
+
     def zone_schedules_backup(self, filename):
         return self._get_single_heating_system().zone_schedules_backup(filename)
 
